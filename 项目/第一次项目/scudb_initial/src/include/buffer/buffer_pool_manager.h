@@ -19,8 +19,7 @@
 namespace scudb {
 class BufferPoolManager {
 public:
-    BufferPoolManager(size_t pool_size, DiskManager *disk_manager,
-                          LogManager *log_manager = nullptr);
+    BufferPoolManager(size_t pool_size, DiskManager *disk_manager, LogManager *log_manager = nullptr);
 
     ~BufferPoolManager();
 
@@ -36,15 +35,16 @@ public:
 
     bool CheckAllUnpined();
 
-    Page *GetVictimPage();         // to get a page that will be replaced
+    Page *GetVictimPage();
 private:
-    size_t pool_size_; // number of pages in buffer pool
-    Page *pages_;      // array of pages
+    size_t pool_size_;
+    Page *pages_;
     DiskManager *disk_manager_;
     LogManager *log_manager_;
-    HashTable<page_id_t, Page *> *page_table_; // to keep track of pages
-    Replacer<Page *> *replacer_;   // to find an unpinned page for replacement
-    std::list<Page *> *free_list_; // to find a free page for replacement
-    std::mutex latch_;             // to protect shared data structure
+    HashTable<page_id_t, Page *> *page_table_;
+    Replacer<Page *> *replacer_;
+    std::list<Page *> *free_list_;
+    std::mutex latch_;
 };
+
 } // namespace scudb

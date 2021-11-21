@@ -21,7 +21,7 @@ template <typename T> LRUReplacer<T>::~LRUReplacer() {}
 template <typename T> void LRUReplacer<T>::Insert(const T &value) {
     lock_guard<mutex> lock(latch);
     shared_ptr<Node> cur;
-    if (map.find(value) != map.end())// if the value has been in the list, refresh this node to the first
+    if(map.find(value) != map.end())
     {
         cur = map[value];
         shared_ptr <Node> prev = cur->prev;
@@ -29,7 +29,7 @@ template <typename T> void LRUReplacer<T>::Insert(const T &value) {
         prev->next = succ;
         succ->prev = prev;
     }
-    else // else insert a new node to the first
+    else
     {
         cur = make_shared<Node>(value);
     }
@@ -38,8 +38,8 @@ template <typename T> void LRUReplacer<T>::Insert(const T &value) {
     fir->prev = cur;
     cur->prev = head;
     head->next = cur;
-    map[value] = cur;  // refresh the map
-    return;// }// }
+    map[value] = cur;
+    return;
 }
 
 /* If LRU is non-empty, pop the head member from LRU to argument "value", and
@@ -47,7 +47,8 @@ template <typename T> void LRUReplacer<T>::Insert(const T &value) {
  */
 template <typename T> bool LRUReplacer<T>::Victim(T &value) {
     lock_guard<mutex> lock(latch);
-    if (map.empty()) {
+    if(map.empty())
+    {
         return false;
     }
     shared_ptr<Node> last = tail->prev;
@@ -64,7 +65,7 @@ template <typename T> bool LRUReplacer<T>::Victim(T &value) {
  */
 template <typename T> bool LRUReplacer<T>::Erase(const T &value) {
     lock_guard<mutex> lock(latch);
-    if (map.find(value) != map.end())
+    if(map.find(value) != map.end())
     {
         shared_ptr <Node> cur = map[value];
         cur->prev->next = cur->next;

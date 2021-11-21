@@ -49,21 +49,18 @@ BufferPoolManager::~BufferPoolManager() {
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
     lock_guard<mutex> lock(latch_);
     Page *p = nullptr;
-    if (page_table_->Find(page_id, p)) {  // if find the page in the page table
+    if(page_table_->Find(page_id, p))
+    {
         p->pin_count_++;
         replacer_->Erase(p);
         return p;
     }
-    p = GetVictimPage();  // find a replacement entry, in other words find a page that will be replaced
-    if (p == nullptr) {
-        return p;
-    }
-    if (p->is_dirty_) {  // if the page is dirty
-        disk_manager_->WritePage(p->GetPageId(), p->data_);
-    }
+    p = GetVictimPage();
+    if(p == nullptr) return p;
+    if(p->is_dirty_) disk_manager_->WritePage(p->GetPageId(), p->data_);
     page_table_->Remove(p->GetPageId());
-    page_table_->Insert(page_id, p);  // prepare point p
-    disk_manager_->ReadPage(page_id, p->data_); // read the content from disk to p.data_ according to page_id
+    page_table_->Insert(page_id, p);
+    disk_manager_->ReadPage(page_id, p->data_);
     p->pin_count_ = 1;
     p->is_dirty_ = false;
     p->page_id_ = page_id;
@@ -80,18 +77,18 @@ bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
     lock_guard<mutex> lock(latch_);
     Page *p = nullptr;
     page_table_->Find(page_id, p);
-    if (p == nullptr) {
-        return false;
-    }
-    p->is_dirty_ |= is_dirty;  // pay attion to use | , false can't cover the true flag.
+    if(p == nullptr) return false;
+    p->is_dirty_ |= is_dirty;
 
-    if (p->GetPinCount() <= 0) {
+    if(p->GetPinCount() <= 0)
+    {
         cout << "DeletePage Error:" << p->page_id_ << endl;
         assert(false);
         return false;
     }
 
-    if (--p->pin_count_ == 0) {
+    if(--p->pin_count_ == 0)
+    {
         replacer_->Insert(p);
     }
     return true;
@@ -107,10 +104,9 @@ bool BufferPoolManager::FlushPage(page_id_t page_id) {
     lock_guard<mutex> lock(latch_);
     Page *p = nullptr;
     page_table_->Find(page_id, p);
-    if (p == nullptr || p->page_id_ == INVALID_PAGE_ID) {
-        return false;
-    }
-    if (p->is_dirty_) {
+    if(p == nullptr || p->page_id_ == INVALID_PAGE_ID) return false;
+    if(p->is_dirty_)
+    {
         disk_manager_->WritePage(page_id, p->GetData());
         p->is_dirty_ = false;
     }
@@ -129,14 +125,13 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
     lock_guard<mutex> lock(latch_);
     Page *p = nullptr;
     page_table_->Find(page_id, p);
-    if (p == nullptr) {
+    if(p == nullptr)
+    {
         disk_manager_->DeallocatePage(page_id);
-    } else {
-        if (p->GetPinCount() > 0) {   // if there's still thread hold this page, return false
-    //      cout << "DeletePage Error in Delete func:" << p->page_id_ << endl;
-    //      assert(false);
-            return false;
-        }
+    }
+    else
+    {
+        if (p->GetPinCount() > 0) return false;
         replacer_->Erase(p);
         page_table_->Remove(page_id);
         p->is_dirty_ = false;
@@ -158,18 +153,13 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
 Page *BufferPoolManager::NewPage(page_id_t &page_id) {
     lock_guard<mutex> lock(latch_);
     Page *p = nullptr;
-    p = GetVictimPage();  // get a victim page for allocated page from disk
-    if (p == nullptr) {
-        return p;
-    }
+    p = GetVictimPage();
+    if(p == nullptr) return nullptr;
     page_id = disk_manager_->AllocatePage();
-    if (p->is_dirty_) {
-        disk_manager_->WritePage(p->GetPageId(), p->data_);
-    }
+    if(p->is_dirty_) disk_manager_->WritePage(p->GetPageId(), p->data_);
     page_table_->Remove(p->GetPageId());
     page_table_->Insert(page_id, p);
 
-    // init the page meta-date
     p->page_id_ = page_id;
     p->ResetMemory();
     p->is_dirty_ = false;
@@ -183,31 +173,31 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
  */
 Page *BufferPoolManager::GetVictimPage() {
     Page *p = nullptr;
-    if (free_list_->empty()) {  // if there is no free page to be replaced, need to get from replacer
-        if (replacer_->Size() == 0) { // if there is no page to be replaced into the disk, return nullptr
-            return nullptr;
-        }
-        replacer_->Victim(p);  // return a page that need to be replaced
-    } else {
+    if(free_list_->empty())
+    {
+        if(replacer_->Size() == 0) return nullptr;
+        replacer_->Victim(p);
+    }
+    else
+    {
         p = free_list_->front();
         free_list_->pop_front();
         assert(p->GetPageId() == INVALID_PAGE_ID);
     }
-    if (p != nullptr) {
-        assert(p->GetPinCount() == 0);  // the replaced page must be free from all threads
-    }
+    if(p != nullptr) assert(p->GetPinCount() == 0);
     return p;
 }
 
 //DEBUG
 bool BufferPoolManager::CheckAllUnpined() {
     bool res = true;
-    for (size_t i = 1; i < pool_size_; i++) {
-        if (pages_[i].pin_count_ != 0) {
+    for(size_t i = 1; i < pool_size_; i++)
+    {
+        if (pages_[i].pin_count_ != 0)
+        {
             res = false;
             std::cout << "page " << pages_[i].page_id_ << " pin count:" << pages_[i].pin_count_ << endl;
         }
-
     }
     return res;
 }

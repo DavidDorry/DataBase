@@ -61,7 +61,8 @@ template <typename K, typename V>
 bool ExtendibleHash<K, V>::Find(const K &key, V &value) {
     int idx = getIdx(key);
     lock_guard<mutex> lck(directories[idx]->latch);
-    if (directories[idx]->kmap.find(key) != directories[idx]->kmap.end()) {
+    if(directories[idx]->kmap.find(key) != directories[idx]->kmap.end())
+    {
         value = directories[idx]->kmap[key];
         return true;
     }
@@ -76,10 +77,12 @@ template <typename K, typename V>
 bool ExtendibleHash<K, V>::Remove(const K &key) {
     int idx = getIdx(key);
     lock_guard<mutex> lck(directories[idx]->latch);
-    shared_ptr<Bucket> cur = directories[idx];  // use smart pointer to simplify memory management
-    if (cur->kmap.find(key) == cur->kmap.end()) {
+    shared_ptr<Bucket> cur = directories[idx];
+    if(cur->kmap.find(key) == cur->kmap.end())
+    {
         return false;
     }
+
     cur->kmap.erase(key);
     return true;
 }
@@ -92,57 +95,62 @@ bool ExtendibleHash<K, V>::Remove(const K &key) {
 template <typename K, typename V>
 void ExtendibleHash<K, V>::Insert(const K &key, const V &value) {
     int idx = getIdx(key);
-    shared_ptr<Bucket> cur = directories[idx];  // get the specific bucket according to the key
-    while (true) {  // maybe it isn't enough to complete the insert the data in only one round
+    shared_ptr<Bucket> cur = directories[idx];
+    while(true)
+    {
         lock_guard<mutex> lck(cur->latch);
-        if (cur->kmap.find(key) != cur->kmap.end() || cur->kmap.size() < bucketSize) {
+        if(cur->kmap.find(key) != cur->kmap.end() || cur->kmap.size() < bucketSize)
+        {
             cur->kmap[key] = value;
             break;
         }
-        // from here, deal with the problem about the spliting
-        int mask = (1
-                << (cur->localDepth));  // mask means higher one bit to judge the entry is in old or new bucket.
+
+        int mask = (int)pow(2, cur->localDepth);
         cur->localDepth++;
 
-        {  // pay attention to this scope, it should be locked when different threads modify the directory
-            lock_guard<mutex> lock(latch);  // lock the dictionary
-            if (cur->localDepth > globalDepth) {
-                size_t length = directories.size();
-                for (size_t i = 0; i < length; i++) {
-                    directories.push_back(directories[i]);
-                }
-                globalDepth++;
+        lock_guard<mutex> lock(latch);
+        if(cur->localDepth > globalDepth)
+        {
+            size_t length = directories.size();
+            for(size_t i = 0; i < length; i++)
+            {
+                directories.push_back(directories[i]);
             }
-            bucketNum++;
-            auto newBuc = make_shared<Bucket>(cur->localDepth);  // create a new bucket with the new localDepth
+            globalDepth++;
+        }
+        bucketNum++;
+        auto newBuc = make_shared<Bucket>(cur->localDepth);
 
-            typename map<K, V>::iterator iter;
-            for (iter = cur->kmap.begin(); iter != cur->kmap.end();) {  // rehash each entry with a new local depth
-                if (HashKey(iter->first) &
-                    mask) {  // if the higher bit is 1, allocate this entry to new bucket, and delete it from old bucket
-                    newBuc->kmap[iter->first] = iter->second;
-                    iter = cur->kmap.erase(iter);  // erase return the next iter
-                } else {  // else keep it in old bucket
-                    iter++;
-                }
+        typename map<K, V>::iterator iter;
+        for(iter = cur->kmap.begin(); iter != cur->kmap.end();)
+        {
+            if(HashKey(iter->first) & mask)
+            {
+                newBuc->kmap[iter->first] = iter->second;
+                iter = cur->kmap.erase(iter);
             }
+            else
+            {
+                iter++;
+            }
+        }
 
-            for (size_t i = 0;
-                 i < directories.size(); i++) {  // assign each directory point to the correct the bucket
-                if (directories[i] == cur && (i & mask)) {
-                    directories[i] = newBuc;
-                }
+        for(size_t i = 0; i < directories.size(); i++)
+        {
+            if(directories[i] == cur && (i & mask))
+            {
+                directories[i] = newBuc;
             }
         }
         idx = getIdx(key);
-        cur = directories[idx];  // get the current bucket, maybe it's still full so we need use while loop, until we find the empty position for the key.
+        cur = directories[idx];
     }
 }
 
 
 template<typename K, typename V>
 int ExtendibleHash<K, V>::getIdx(const K &key) {
-    return HashKey(key) & ((int)pow(2, globalDepth) - 1);  // return globalDepth length LSBs of HashKey(key)
+    return HashKey(key) & ((int)pow(2, globalDepth) - 1);
 }
 
 template class ExtendibleHash<page_id_t, Page *>;

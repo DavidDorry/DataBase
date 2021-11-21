@@ -47,7 +47,6 @@ public:
         mutex latch;
     };
 private:
-    // add your own member variables here
     int globalDepth;
     int bucketNum;
     size_t bucketSize;
