@@ -45,9 +45,4 @@ void BPlusTreePage::SetParentPageId(page_id_t parent_page_id) {}
 page_id_t BPlusTreePage::GetPageId() const { return 0; }
 void BPlusTreePage::SetPageId(page_id_t page_id) {}
 
-/*
- * Helper methods to set lsn
- */
-void BPlusTreePage::SetLSN(lsn_t lsn) { lsn_ = lsn; }
-
 } // namespace scudb
