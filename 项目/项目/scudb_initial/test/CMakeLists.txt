@@ -19,7 +19,6 @@ set(GMOCK_DIR  "${PROJECT_SOURCE_DIR}/third_party/gmock")
 file(GLOB gmock_srcs  ${GMOCK_DIR}/*.cc)
 include_directories(SYSTEM ${GMOCK_DIR})
 add_library(gtest EXCLUDE_FROM_ALL ${gmock_srcs})
-add_definitions("-Wno-error=deprecated-copy")
 target_link_libraries(gtest ${CMAKE_THREAD_LIBS_INIT})
 
 ##################################################################################

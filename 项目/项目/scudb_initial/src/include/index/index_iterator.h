@@ -12,14 +12,13 @@ namespace scudb {
 
 INDEX_TEMPLATE_ARGUMENTS
 class IndexIterator {
- public:
+public:
   // you may define your own constructor based on your member variables
-  IndexIterator();
   IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf, int index, BufferPoolManager *bufferPoolManager);
   ~IndexIterator();
 
-  bool isEnd() {
-    return (leaf_ == nullptr);// || (index_ >= leaf_->GetSize());
+  bool isEnd(){
+    return (leaf_ == nullptr);
   }
 
   const MappingType &operator*() {
@@ -30,13 +29,12 @@ class IndexIterator {
     index_++;
     if (index_ >= leaf_->GetSize()) {
       page_id_t next = leaf_->GetNextPageId();
-      UnlockAndUnPin();  // release read latch and then unpin the page
+      UnlockAndUnPin();
       if (next == INVALID_PAGE_ID) {
         leaf_ = nullptr;
       } else {
-        //bufferPoolManager_->UnpinPage(leaf_->GetPageId(), false);
         Page *page = bufferPoolManager_->FetchPage(next);
-        page->RLatch();  // remember to get the read latch
+        page->RLatch();
         leaf_ = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
         index_ = 0;
       }
@@ -44,7 +42,7 @@ class IndexIterator {
     return *this;
   }
 
- private:
+private:
   // add your own private member variables here
   void UnlockAndUnPin() {
     bufferPoolManager_->FetchPage(leaf_->GetPageId())->RUnlatch();

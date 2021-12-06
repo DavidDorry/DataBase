@@ -1,4 +1,4 @@
-#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
 
 #IncludeRegexScan: ^.*$
 
@@ -6,17 +6,17 @@
 
 #IncludeRegexTransform: 
 
-/home/dorry/scudb_initial/src/sqlite/sqlite3.c
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/sqlite3.c
 config.h
-/home/dorry/scudb_initial/src/sqlite/config.h
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/config.h
 vxWorks.h
 -
 pthread.h
 -
 mingw.h
-/home/dorry/scudb_initial/src/sqlite/mingw.h
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/mingw.h
 _mingw.h
-/home/dorry/scudb_initial/src/sqlite/_mingw.h
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/_mingw.h
 stdarg.h
 -
 stdint.h
@@ -54,7 +54,7 @@ malloc.h
 pthread.h
 -
 windows.h
-/home/dorry/scudb_initial/src/sqlite/windows.h
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/windows.h
 sys/cygwin.h
 -
 errno.h
@@ -98,11 +98,11 @@ sys/statvfs.h
 dlfcn.h
 -
 sqlite_tcl.h
-/home/dorry/scudb_initial/src/sqlite/sqlite_tcl.h
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/sqlite_tcl.h
 tcl.h
-/home/dorry/scudb_initial/src/sqlite/tcl.h
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/tcl.h
 sqlite3rtree.h
-/home/dorry/scudb_initial/src/sqlite/sqlite3rtree.h
+/home/dorry/SCUDatabase/scudb_project2/src/sqlite/sqlite3rtree.h
 unicode/utypes.h
 -
 unicode/uregex.h

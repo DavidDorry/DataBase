@@ -1,4 +1,4 @@
-#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
 
 #IncludeRegexScan: ^.*$
 
@@ -13,13 +13,11 @@ vector
 -
 string
 -
-mutex
--
 map
 -
 memory
 -
-math.h
+mutex
 -
 hash/hash_table.h
 ../src/include/hash/hash/hash_table.h
@@ -154,11 +152,11 @@ iosfwd
 vector
 -
 
-/home/dorry/scudb_initial/test/hash/extendible_hash_test.cpp
+/home/dorry/SCUDatabase/scudb_project2/test/hash/extendible_hash_test.cpp
 thread
 -
 hash/extendible_hash.h
-/home/dorry/scudb_initial/test/hash/hash/extendible_hash.h
+/home/dorry/SCUDatabase/scudb_project2/test/hash/hash/extendible_hash.h
 gtest/gtest.h
-/home/dorry/scudb_initial/test/hash/gtest/gtest.h
+/home/dorry/SCUDatabase/scudb_project2/test/hash/gtest/gtest.h
 

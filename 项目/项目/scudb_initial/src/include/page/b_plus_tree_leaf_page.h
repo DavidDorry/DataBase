@@ -25,7 +25,7 @@
 #include "page/b_plus_tree_page.h"
 
 namespace scudb {
-#define B_PLUS_TREE_LEAF_PAGE_TYPE                                             \
+#define B_PLUS_TREE_LEAF_PAGE_TYPE                                           \
   BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
 
 INDEX_TEMPLATE_ARGUMENTS

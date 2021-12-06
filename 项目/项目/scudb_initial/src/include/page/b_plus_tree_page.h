@@ -7,9 +7,11 @@
  * contains information shared by both leaf page and internal page.
  *
  * Header format (size in byte, 20 bytes in total):
- *  ----------------------------------------------------------------------------
- * | PageType (4) | CurrentSize (4) | MaxSize (4) | ParentPageId (4) | PageId(4)
- *  ----------------------------------------------------------------------------
+ * ----------------------------------------------------------------------------
+ * | PageType (4) | LSN (4) | CurrentSize (4) | MaxSize (4) |
+ * ----------------------------------------------------------------------------
+ * | ParentPageId (4) | PageId(4) |
+ * ----------------------------------------------------------------------------
  */
 
 #pragma once
@@ -18,6 +20,7 @@
 #include <climits>
 #include <cstdlib>
 #include <string>
+
 
 #include "buffer/buffer_pool_manager.h"
 #include "index/generic_key.h"
@@ -31,7 +34,7 @@ namespace scudb {
 
 // define page type enum
 enum class IndexPageType { INVALID_INDEX_PAGE = 0, LEAF_PAGE, INTERNAL_PAGE };
-
+enum class OpType { READ = 0, INSERT, DELETE };
 // Abstract class.
 class BPlusTreePage {
 public:
@@ -53,13 +56,18 @@ public:
   page_id_t GetPageId() const;
   void SetPageId(page_id_t page_id);
 
+  void SetLSN(lsn_t lsn = INVALID_LSN);
+
+  bool IsSafe(OpType op);
 private:
   // member variable, attributes that both internal and leaf page share
   IndexPageType page_type_;
+  lsn_t lsn_;
   int size_;
   int max_size_;
   page_id_t parent_page_id_;
   page_id_t page_id_;
+
 };
 
 } // namespace scudb

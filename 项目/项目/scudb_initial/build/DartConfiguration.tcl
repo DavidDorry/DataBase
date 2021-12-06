@@ -4,38 +4,34 @@
 
 
 # Configuration directories and files
-SourceDirectory: /home/dorry/scudb_initial
-BuildDirectory: /home/dorry/scudb_initial/build
+SourceDirectory: /home/dorry/SCUDatabase/scudb_project2
+BuildDirectory: /home/dorry/SCUDatabase/scudb_project2/build
 
 # Where to place the cost data store
 CostDataFile: 
 
 # Site is something like machine.domain, i.e. pragmatic.crd
-Site: master
+Site: ubuntu
 
 # Build name is osname-revision-compiler, i.e. Linux-2.4.2-2smp-c++
 BuildName: Linux-c++
 
+# Subprojects
+LabelsForSubprojects: 
+
 # Submission information
-IsCDash: 
-CDashVersion: 
-QueryCDashVersion: 
-DropSite: 
-DropLocation: 
-DropSiteUser: 
-DropSitePassword: 
-DropSiteMode: 
-DropMethod: http
-TriggerSite: 
-ScpCommand: /usr/bin/scp
+SubmitURL: http://
 
 # Dashboard start time
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "/usr/bin/cmake" "/home/dorry/scudb_initial"
-MakeCommand: /usr/bin/make -i
+ConfigureCommand: "/usr/bin/cmake" "/home/dorry/SCUDatabase/scudb_project2"
+MakeCommand: /usr/bin/cmake --build . --config "${CTEST_CONFIGURATION_TYPE}" -- -i
 DefaultCTestConfigurationType: Release
+
+# version control
+UpdateVersionOnly: 
 
 # CVS options
 # Default is "-d -P -A"
@@ -49,21 +45,32 @@ SVNUpdateOptions:
 
 # Git options
 GITCommand: GITCOMMAND-NOTFOUND
+GITInitSubmodules: 
 GITUpdateOptions: 
 GITUpdateCustom: 
 
+# Perforce options
+P4Command: P4COMMAND-NOTFOUND
+P4Client: 
+P4Options: 
+P4UpdateOptions: 
+P4UpdateCustom: 
+
 # Generic update command
-UpdateCommand: GITCOMMAND-NOTFOUND
+UpdateCommand: 
 UpdateOptions: 
-UpdateType: git
+UpdateType: 
 
 # Compiler info
 Compiler: /usr/bin/c++
+CompilerVersion: 7.5.0
 
 # Dynamic analysis (MemCheck)
 PurifyCommand: 
 ValgrindCommand: 
 ValgrindCommandOptions: 
+MemoryCheckType: 
+MemoryCheckSanitizerOptions: 
 MemoryCheckCommand: MEMORYCHECK_COMMAND-NOTFOUND
 MemoryCheckCommandOptions: 
 MemoryCheckSuppressionFile: 
@@ -82,6 +89,10 @@ SlurmRunCommand: SLURM_SRUN_COMMAND-NOTFOUND
 # process will be summarily terminated.
 # Currently set to 25 minutes
 TimeOut: 1500
+
+# During parallel testing CTest will not start a new test if doing
+# so would cause the system load to exceed this value.
+TestLoad: 
 
 UseLaunchers: 
 CurlOptions: 

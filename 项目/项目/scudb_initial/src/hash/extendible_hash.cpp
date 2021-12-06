@@ -1,4 +1,8 @@
 #include <list>
+#include <cassert>
+#include <functional>
+#include <bitset>
+#include <iostream>
 
 #include "hash/extendible_hash.h"
 #include "page/page.h"
@@ -10,19 +14,20 @@ namespace scudb {
  * array_size: fixed array size for each bucket
  */
 template <typename K, typename V>
-ExtendibleHash<K, V>::ExtendibleHash(size_t size) {
-    globalDepth = 0;
-    bucketSize = size;
-    bucketNum = 1;
-    directories.push_back(make_shared<Bucket>(0));
+ExtendibleHash<K, V>::ExtendibleHash(size_t size)
+: bucket_size_(size), bucket_count_(0), pair_count_(0), depth(0) 
+{
+    bucket_.emplace_back(new Bucket(0, 0));
+    bucket_count_ = 1;
 }
 
 /*
  * helper function to calculate the hashing address of input key
  */
 template <typename K, typename V>
-size_t ExtendibleHash<K, V>::HashKey(const K &key) {
-    return hash<K>{}(key);
+size_t ExtendibleHash<K, V>::HashKey(const K &key) 
+{
+    return std::hash<K>()(key);
 }
 
 /*
@@ -30,9 +35,10 @@ size_t ExtendibleHash<K, V>::HashKey(const K &key) {
  * NOTE: you must implement this function in order to pass test
  */
 template <typename K, typename V>
-int ExtendibleHash<K, V>::GetGlobalDepth() const {
-    lock_guard<mutex> lock(latch);
-    return globalDepth;
+int ExtendibleHash<K, V>::GetGlobalDepth() const 
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return depth;
 }
 
 /*
@@ -40,31 +46,42 @@ int ExtendibleHash<K, V>::GetGlobalDepth() const {
  * NOTE: you must implement this function in order to pass test
  */
 template <typename K, typename V>
-int ExtendibleHash<K, V>::GetLocalDepth(int bucket_id) const {
-    lock_guard<mutex> lock(latch);
-    return directories[bucket_id]->localDepth;
+int ExtendibleHash<K, V>::GetLocalDepth(int bucket_id) const 
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(bucket_[bucket_id]) 
+    {
+        return bucket_[bucket_id]->depth;
+    }
+    return -1;
 }
 
 /*
  * helper function to return current number of bucket in hash table
  */
 template <typename K, typename V>
-int ExtendibleHash<K, V>::GetNumBuckets() const {
-    lock_guard<mutex> lock(latch);
-    return bucketNum;
+int ExtendibleHash<K, V>::GetNumBuckets() const 
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return bucket_count_;
 }
 
 /*
  * lookup function to find value associate with input key
  */
 template <typename K, typename V>
-bool ExtendibleHash<K, V>::Find(const K &key, V &value) {
-    int idx = getIdx(key);
-    lock_guard<mutex> lck(directories[idx]->latch);
-    if(directories[idx]->kmap.find(key) != directories[idx]->kmap.end())
+bool ExtendibleHash<K, V>::Find(const K &key, V &value) 
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    size_t position = HashKey(key) & ((1 << depth) - 1);
+
+    if(bucket_[position]) 
     {
-        value = directories[idx]->kmap[key];
-        return true;
+        if(bucket_[position]->items.find(key) != bucket_[position]->items.end()) 
+        {
+            value = bucket_[position]->items[key];
+            return true;
+        }
     }
     return false;
 }
@@ -74,17 +91,19 @@ bool ExtendibleHash<K, V>::Find(const K &key, V &value) {
  * Shrink & Combination is not required for this project
  */
 template <typename K, typename V>
-bool ExtendibleHash<K, V>::Remove(const K &key) {
-    int idx = getIdx(key);
-    lock_guard<mutex> lck(directories[idx]->latch);
-    shared_ptr<Bucket> cur = directories[idx];
-    if(cur->kmap.find(key) == cur->kmap.end())
-    {
-        return false;
-    }
+bool ExtendibleHash<K, V>::Remove(const K &key) 
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    size_t position = HashKey(key) & ((1 << depth) - 1);
+    size_t cnt = 0;
 
-    cur->kmap.erase(key);
-    return true;
+    if(bucket_[position]) 
+    {
+        auto tmp_bucket = bucket_[position];
+        cnt = tmp_bucket->items.erase(key);
+        pair_count_ -= cnt;
+    }
+    return cnt != 0;
 }
 
 /*
@@ -93,64 +112,115 @@ bool ExtendibleHash<K, V>::Remove(const K &key) {
  * global depth
  */
 template <typename K, typename V>
-void ExtendibleHash<K, V>::Insert(const K &key, const V &value) {
-    int idx = getIdx(key);
-    shared_ptr<Bucket> cur = directories[idx];
-    while(true)
+void ExtendibleHash<K, V>::Insert(const K &key, const V &value) 
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    size_t bucket_id = HashKey(key) & ((1 << depth) - 1);
+    // find the place to insert, if empty, build one
+    if(bucket_[bucket_id] == nullptr) 
     {
-        lock_guard<mutex> lck(cur->latch);
-        if(cur->kmap.find(key) != cur->kmap.end() || cur->kmap.size() < bucketSize)
+        bucket_[bucket_id] = std::make_shared<Bucket>(bucket_id, depth);
+        ++ bucket_count_;
+    }
+    auto bucket = bucket_[bucket_id];
+    // if there is value, overwrite
+    if(bucket->items.find(key) != bucket->items.end()) 
+    {
+        bucket->items[key] = value;
+        return;
+    }
+
+    bucket->items.insert({key, value});
+    ++pair_count_;
+
+    if(bucket->items.size() > bucket_size_) 
+    {
+        auto old_index = bucket->id;
+        auto old_depth = bucket->depth;
+        std::shared_ptr<Bucket> new_bucket = split(bucket);
+        if(new_bucket == nullptr) 
         {
-            cur->kmap[key] = value;
-            break;
+            bucket->depth = old_depth;
+            return;
         }
 
-        int mask = (int)pow(2, cur->localDepth);
-        cur->localDepth++;
-
-        lock_guard<mutex> lock(latch);
-        if(cur->localDepth > globalDepth)
+        if(bucket->depth > depth) 
         {
-            size_t length = directories.size();
-            for(size_t i = 0; i < length; i++)
+            auto size = bucket_.size();
+            auto factor = (1 << (bucket->depth - depth));
+            depth = bucket->depth;
+            bucket_.resize(bucket_.size()*factor);
+            bucket_[bucket->id] = bucket;
+            bucket_[new_bucket->id] = new_bucket;
+            for(size_t i = 0; i < size; ++i) 
             {
-                directories.push_back(directories[i]);
+                if(bucket_[i]) 
+                {
+                    if(i < bucket_[i]->id)
+                    {
+                        bucket_[i].reset();
+                    } else 
+                    {
+                        auto step = 1 << bucket_[i]->depth;
+                        for(size_t j = i + step; j < bucket_.size(); j += step) 
+                        {
+                            bucket_[j] = bucket_[i];
+                        }
+                    }
+                }
             }
-            globalDepth++;
-        }
-        bucketNum++;
-        auto newBuc = make_shared<Bucket>(cur->localDepth);
-
-        typename map<K, V>::iterator iter;
-        for(iter = cur->kmap.begin(); iter != cur->kmap.end();)
+        } 
+        else 
         {
-            if(HashKey(iter->first) & mask)
+            for (size_t i = old_index; i < bucket_.size(); i += (1 << old_depth)) 
             {
-                newBuc->kmap[iter->first] = iter->second;
-                iter = cur->kmap.erase(iter);
+                bucket_[i].reset();
             }
-            else
+            bucket_[bucket->id] = bucket;
+            bucket_[new_bucket->id] = new_bucket;
+            auto step = 1 << bucket->depth;
+            for (size_t i = bucket->id + step; i < bucket_.size(); i += step) 
             {
-                iter++;
+                bucket_[i] = bucket;
             }
-        }
-
-        for(size_t i = 0; i < directories.size(); i++)
-        {
-            if(directories[i] == cur && (i & mask))
+            for (size_t i = new_bucket->id + step; i < bucket_.size(); i += step) 
             {
-                directories[i] = newBuc;
+                bucket_[i] = new_bucket;
             }
         }
-        idx = getIdx(key);
-        cur = directories[idx];
     }
 }
 
-
-template<typename K, typename V>
-int ExtendibleHash<K, V>::getIdx(const K &key) {
-    return HashKey(key) & ((int)pow(2, globalDepth) - 1);
+template <typename K, typename V>
+std::shared_ptr<typename ExtendibleHash<K, V>::Bucket>
+ExtendibleHash<K, V>::split(std::shared_ptr<Bucket> &b) 
+{
+    auto res = std::make_shared<Bucket>(0, b->depth);
+    while(res->items.empty()) 
+    {
+        b->depth++;
+        res->depth++;
+        for(auto it = b->items.begin(); it != b->items.end();) 
+        {
+            if (HashKey(it->first) & (1 << (b->depth - 1))) 
+            {
+                res->items.insert(*it);
+                res->id = HashKey(it->first) & ((1 << b->depth) - 1);
+                it = b->items.erase(it);
+            } 
+            else 
+            {
+                ++it;
+            }
+        }
+        if(b->items.empty()) 
+        {
+            b->items.swap(res->items);
+            b->id = res->id;
+        }
+    }
+    ++ bucket_count_;
+    return res;
 }
 
 template class ExtendibleHash<page_id_t, Page *>;
